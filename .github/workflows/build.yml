@@ -20,7 +20,7 @@ jobs:
         with:
           cache-cleanup: never
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon --parallel
+        run: ./gradlew build --no-daemon --parallel -Xmx8G
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
