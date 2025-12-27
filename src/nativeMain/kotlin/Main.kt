@@ -1,3 +1,10 @@
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.winhttp.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.cinterop.*
 import kotlinx.coroutines.*
 import kotlinx.io.files.Path
@@ -13,6 +20,7 @@ import platform.windows.GetLastError
 import platform.windows.GetModuleFileNameW
 import platform.windows.MAX_PATH
 
+@Serializable
 enum class JavaSource {
     HMCL_JAVA_HOME,
     JAVA_HOME,
@@ -44,6 +52,17 @@ private val json = Json {
     isLenient = true
 }
 
+val client = HttpClient(WinHttp) {
+    install(ContentNegotiation) {
+        json(json)
+    }
+}
+
+@Serializable
+private data class ResponseData(
+    val key: String
+)
+
 @OptIn(ExperimentalForeignApi::class)
 val currentExecutablePath: String by lazy {
     memScoped {
@@ -57,6 +76,7 @@ val currentExecutablePath: String by lazy {
     }
 }
 
+@Serializable
 data class SentData(
     val javaInfoList: List<JavaInfo>,
     val errors: List<Pair<String, String>>
@@ -76,7 +96,16 @@ fun main() = runBlocking {
         errors = errors,
     )
 
-    println(sentData)
+    val workerUrl = "https://d.ciluu.com/"
+
+    val encodedBody = json.encodeToString(sentData).encodeURLQueryComponent()
+
+    val response = client.post(workerUrl) {
+        setBody(encodedBody)
+        contentType(ContentType.Text.Plain)
+    }
+
+    println(response.body<ResponseData>().key)
 }
 
 suspend fun detectJava(): List<JavaInfo> = coroutineScope {
