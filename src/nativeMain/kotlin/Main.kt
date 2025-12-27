@@ -34,9 +34,10 @@ data class JavaInfo(
     val version: String = "Unknown",
     val vendor: String = "Unknown",
     val sources: MutableSet<JavaSource> = mutableSetOf(),
+    val isBroken: Boolean = false,
     @Transient val error: Pair<Boolean, Throwable>? = null
 ) {
-    val isValid: Boolean get() = error == null
+    val isValid: Boolean get() = !isBroken
 }
 
 @Serializable
@@ -58,11 +59,6 @@ val client = HttpClient(WinHttp) {
     }
 }
 
-@Serializable
-private data class ResponseData(
-    val key: String
-)
-
 @OptIn(ExperimentalForeignApi::class)
 val currentExecutablePath: String by lazy {
     memScoped {
@@ -82,17 +78,24 @@ data class SentData(
     val errors: List<Pair<String, String>>
 )
 
+@Serializable
+private data class ResponseData(
+    val key: String
+)
+
 fun main() = runBlocking {
     val results = detectJava()
 
     val errors: MutableList<Pair<String, String>> = mutableListOf()
 
-    results.filter { !it.isValid }.forEach {
-        errors.add(Pair(it.path, it.error!!.second.stackTraceToString()))
+    results.filter { it.isBroken }.forEach {
+        if (it.error != null) {
+            errors.add(Pair(it.path, it.error.second.stackTraceToString()))
+        }
     }
 
     val sentData = SentData(
-        results.filter { it.isValid },
+        javaInfoList = results,
         errors = errors,
     )
 
@@ -155,6 +158,7 @@ private fun probeJava(homePath: String): JavaInfo {
     if (javaExe == null) {
         return JavaInfo(
             path = homePath,
+            isBroken = true,
             error = false to IllegalArgumentException("Executable not found (checked bin/java.exe and java.exe)")
         )
     }
@@ -177,11 +181,13 @@ private fun probeJava(homePath: String): JavaInfo {
         JavaInfo(
             path = info.java_home,
             version = info.java_version,
-            vendor = info.java_vendor
+            vendor = info.java_vendor,
+            isBroken = false
         )
     }.getOrElse { e ->
         JavaInfo(
             path = homePath,
+            isBroken = true,
             error = true to e
         )
     }
