@@ -10,10 +10,34 @@ repositories {
     mavenCentral()
 }
 
+val appendPayloadTask = tasks.register("appendPayload") {
+    group = "build"
+
+    val payloadFile = file("src/nativeMain/resources/JavaInfo.jar")
+
+    doLast {
+        val exePath = extensions.extraProperties["exePath"] as? String
+            ?: throw GradleException("Executable path not found!")
+
+        val exeFile = file(exePath)
+
+        if (!payloadFile.exists()) {
+            println(">>> Payload file not found: ${payloadFile.absolutePath}. Skipping append.")
+            return@doLast
+        }
+        if (!exeFile.exists()) return@doLast
+
+        val payloadBytes = payloadFile.readBytes()
+
+        exeFile.appendBytes(payloadBytes)
+    }
+}
+
 kotlin {
     val hostOs = System.getProperty("os.name")
     val isArm64 = System.getProperty("os.arch") == "aarch64"
     val isMingwX64 = hostOs.startsWith("Windows")
+
     val nativeTarget = when {
         hostOs == "Mac OS X" && isArm64 -> macosArm64("native")
         hostOs == "Mac OS X" && !isArm64 -> macosX64("native")
@@ -27,12 +51,39 @@ kotlin {
         binaries {
             executable {
                 entryPoint = "main"
+
+                linkTaskProvider.configure {
+                    if (isMingwX64) {
+
+                        finalizedBy(appendPayloadTask)
+
+                        val outputFile = this.outputFile.get()
+                        doFirst {
+                            appendPayloadTask.configure {
+                                extensions.extraProperties["exePath"] = outputFile.absolutePath
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
     sourceSets {
         nativeMain.dependencies {
+            val ktorVersion = "3.3.3"
+
+            implementation("io.ktor:ktor-client-core:$ktorVersion")
+
+            if (isMingwX64) {
+                implementation("io.ktor:ktor-client-winhttp:$ktorVersion")
+            } else {
+                implementation("io.ktor:ktor-client-cio:$ktorVersion")
+            }
+            implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
             implementation(libs.kotlinxSerializationJson)
         }
     }
