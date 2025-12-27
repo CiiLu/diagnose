@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           distribution: 'liberica'
@@ -20,7 +20,7 @@ jobs:
         with:
           cache-cleanup: never
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon --parallel -Xmx8G
+        run: set GRADLE_OPTS=-Xmx8G && gradlew build --no-daemon --parallel
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
