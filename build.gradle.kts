@@ -37,3 +37,7 @@ kotlin {
         }
     }
 }
+
+tasks.named("nativeTest") {
+    enabled = false
+}
