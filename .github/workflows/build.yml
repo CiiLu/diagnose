@@ -26,4 +26,4 @@ jobs:
         with:
           name: windows
           path: |
-            build/bin/native/
+            build/bin/native/releaseExecutable/
