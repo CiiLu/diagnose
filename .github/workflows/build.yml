@@ -20,7 +20,7 @@ jobs:
         with:
           cache-cleanup: never
       - name: Build with Gradle
-        run: set GRADLE_OPTS=-Xmx8G && gradlew build --no-daemon --parallel
+        run: $env:GRADLE_OPTS="-Xmx8G"; ./gradlew build --no-daemon --parallel
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
