@@ -1,0 +1,29 @@
+name: Java CI
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'liberica'
+          java-version: '25'
+          java-package: 'jdk+fx'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: never
+      - name: Build with Gradle
+        run: ./gradlew build --no-daemon --parallel
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            build/bin/native/
